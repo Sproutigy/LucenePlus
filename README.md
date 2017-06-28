@@ -200,7 +200,7 @@ Versions of all additionally used Lucene modules must also be changed.
 ### Maven
 ```xml
 <dependency>
-    <groupId>com.sproutigy.luceneplus</groupId>
+    <groupId>com.sproutigy.libs.luceneplus</groupId>
     <artifactId>luceneplus-core</artifactId>
     <version>1.0.0</version>
 </dependency>
@@ -209,7 +209,7 @@ Versions of all additionally used Lucene modules must also be changed.
 Additional artifact `luceneplus-full` has been provided that aggregates all additional Lucene modules:
 ```xml
 <dependency>
-    <groupId>com.sproutigy.luceneplus</groupId>
+    <groupId>com.sproutigy.libs.luceneplus</groupId>
     <artifactId>luceneplus-full</artifactId>
     <version>1.0.0</version>
 </dependency>
