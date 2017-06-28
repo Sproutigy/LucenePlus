@@ -1,0 +1,67 @@
+# Temporary files, backups, logs
+*.tmp
+*.bak
+*.log
+tmp/
+log/
+
+# Maven
+target/
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files
+*.jar
+*.war
+*.ear
+
+# virtual machine crash logs
+hs_err_pid*
+
+# Eclipse
+.classpath
+.buildpath
+.target
+.project
+.settings/
+*.launch
+.loadpath
+local.properties
+.metadata
+.gradle
+bin/
+.externalToolBuilders/
+
+# Intellij
+.idea/
+*.ipr
+*.iml
+*.iws
+out/
+.idea_modules/
+atlassian-ide-plugin.xml
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+
+#NetBeans
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+nbactions.xml
+nb-configuration.xml
+.nb-gradle/
+
+#Windows
+Thumbs.db
+ehthumbs.db
+
+#Linux
+*~
+.directory
+
+# Mac
+.DS_Store
