@@ -1,8 +1,7 @@
 # LucenePlus
-*LucenePlus* is a Java library that simplifies and enhances the usage of [Apache Lucene](http://lucene.apache.org/core/) - leading search engine technology. *LucenePlus* handles index readers, searches, writers correctly, preventing memory leaks and unneeded index grow.
-
+*LucenePlus* is a Java library that simplifies and enhances the usage of [Apache Lucene](http://lucene.apache.org/core/) - leading search engine technology. 
+It handles index readers, searches, writers correctly, preventing memory leaks and unneeded index grow.
 By default is setup to use Near Real Time (NRT) search feature.
-
 Plus it adds ability to manage multiple indices with optional time series support.  
 
 
@@ -72,7 +71,9 @@ LuceneSearch search = LuceneSearch.builder()
     .query(new TermQuery(new Term("name", "John")))
     .sort(new Sort(new SortField("age", SortField.Type.DOUBLE)))
     .build();
+
 LuceneSearchResults results = index.search(search);
+
 for (LuceneSearchHit hit : results) {
     Document doc = hit.getDocument();
     long id = LuceneFields.Long.get(doc, "id");
@@ -105,7 +106,7 @@ File System indices directory is a root directory for index-specific directories
 #### Specific index from Indices
 Provide releasable reference:
 ```java
-try(Reference<LuceneIndex> index = indices.provide("myindex")) {
+try (Reference<LuceneIndex> index = indices.provide("myindex")) {
     index.use(). //TODO    
 }
 ```
@@ -160,7 +161,6 @@ indices.setAutoClose(3, TimeUnit.SECONDS); // same as above
 
 indices.setAutoCloseMillis(null); // disable auto-close
 ```
-When 
 Be aware that when used on Memory indices, data will be lost after close. By default this feature is disabled.
 
 ## Additional Notes
@@ -190,14 +190,17 @@ You have to manually change dependencies to older Lucene version in your project
 </dependencies>
 ```
 Additional library `lucene-analyzer-commons` dependency must be available, because it contains implementation of `StandardAnalyzer` (which in Lucene 6 has been moved to the core).
-Versions of all additionally used Lucene modules must also be changed.
+
+Versions of all additionally used Lucene modules must also be changed. It means you should not use `luceneplus-full` artifact or replace versions of all modules specified in that artifact as dependencies.
 
 ### Distributed systems
 `Lucene` and `LucenePlus` were designed to work on single computer and single JVM, as embedded indexing engine. If you need more, take a look at [Apache Solr](http://lucene.apache.org/solr/) and [ElasticSearch](https://www.elastic.co/products/elasticsearch).  
 
+
 ## Latest release  
 
 ### Maven
+To use as a dependency add to your `pom.xml` into `<dependencies>` section:
 ```xml
 <dependency>
     <groupId>com.sproutigy.libs.luceneplus</groupId>
