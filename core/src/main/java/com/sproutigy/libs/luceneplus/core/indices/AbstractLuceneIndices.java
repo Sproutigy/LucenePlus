@@ -100,18 +100,20 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
 
     @Override
     public void release(LuceneIndex index) throws IOException {
-        if (autoCloseMillis != null) {
-            String name = index.getName();
-            synchronized (acquisitionsCounters) {
-                Integer counter = acquisitionsCounters.get(name);
-                if (counter != null) {
-                    counter--;
-                    acquisitionsCounters.put(name, counter);
-                    if (counter == 0) {
-                        if (autoCloseMillis == 0) {
-                            close(name);
-                        } else {
-                            lastReleaseTimestamp.put(name, System.currentTimeMillis());
+        if (index != null) {
+            if (autoCloseMillis != null) {
+                String name = index.getName();
+                synchronized (acquisitionsCounters) {
+                    Integer counter = acquisitionsCounters.get(name);
+                    if (counter != null) {
+                        counter--;
+                        acquisitionsCounters.put(name, counter);
+                        if (counter == 0) {
+                            if (autoCloseMillis == 0) {
+                                close(name);
+                            } else {
+                                lastReleaseTimestamp.put(name, System.currentTimeMillis());
+                            }
                         }
                     }
                 }

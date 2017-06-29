@@ -197,28 +197,30 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
         return writer;
     }
 
-    public void release(@NonNull IndexWriter writer) throws IOException {
-        try {
-            if (autoFlush) {
-                writer.flush();
-            }
-            if (autoCommit) {
-                writer.commit();
-            }
-        } catch (Exception e) {
-            this.writer = null;
-        }
-
-        if (this.writer != null && this.writer.isOpen()) {
-            if (searcherManager != null) {
-                searcherManager.maybeRefreshBlocking();
-            }
-        } else {
-            synchronized (lock) {
+    public void release(IndexWriter writer) throws IOException {
+        if (writer != null) {
+            try {
+                if (autoFlush) {
+                    writer.flush();
+                }
+                if (autoCommit) {
+                    writer.commit();
+                }
+            } catch (Exception e) {
                 this.writer = null;
+            }
+
+            if (this.writer != null && this.writer.isOpen()) {
                 if (searcherManager != null) {
-                    searcherManager.close();
-                    searcherManager = null;
+                    searcherManager.maybeRefreshBlocking();
+                }
+            } else {
+                synchronized (lock) {
+                    this.writer = null;
+                    if (searcherManager != null) {
+                        searcherManager.close();
+                        searcherManager = null;
+                    }
                 }
             }
         }
@@ -254,8 +256,10 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
         }
     }
 
-    public void release(@NonNull IndexReader reader) throws IOException {
-        reader.close();
+    public void release(IndexReader reader) throws IOException {
+        if (reader != null) {
+            reader.close();
+        }
     }
 
     public Reference<IndexSearcher> provideSearcher() {
@@ -291,8 +295,10 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
         return searcherManager.acquire();
     }
 
-    public void release(@NonNull IndexSearcher searcher) throws IOException {
-        searcherManager.release(searcher);
+    public void release(IndexSearcher searcher) throws IOException {
+        if (searcher != null) {
+            searcherManager.release(searcher);
+        }
     }
 
     @Override
