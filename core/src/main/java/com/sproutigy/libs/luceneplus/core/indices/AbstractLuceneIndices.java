@@ -44,6 +44,8 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
 
     private ScheduledExecutorService scheduler;
 
+    private final Object lock = new Object();
+
     protected LuceneIndex prepareIndex(String name, Supplier<Directory> directorySupplier) {
         LuceneIndex index = new LuceneIndex(name, directorySupplier, indexWriterConfigSupplier);
         index.setAnalyzer(analyzer);
@@ -84,7 +86,11 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
     }
 
     @Override
-    public LuceneIndex acquire(String name) throws IOException {
+    public LuceneIndex acquire(@NonNull String name) throws IOException {
+        if (name.isEmpty()) {
+            throw new IllegalArgumentException("name is empty");
+        }
+
         if (autoCloseMillis != null) {
             synchronized (acquisitionsCounters) {
                 Integer counter = acquisitionsCounters.get(name);
@@ -95,23 +101,26 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
                 }
             }
         }
+
         return instantiate(name); //TODO: count acquisitions per index to allow automatic close
     }
 
     @Override
     public void release(LuceneIndex index) throws IOException {
-        if (autoCloseMillis != null) {
-            String name = index.getName();
-            synchronized (acquisitionsCounters) {
-                Integer counter = acquisitionsCounters.get(name);
-                if (counter != null) {
-                    counter--;
-                    acquisitionsCounters.put(name, counter);
-                    if (counter == 0) {
-                        if (autoCloseMillis == 0) {
-                            close(name);
-                        } else {
-                            lastReleaseTimestamp.put(name, System.currentTimeMillis());
+        if (index != null) {
+            if (autoCloseMillis != null) {
+                String name = index.getName();
+                synchronized (acquisitionsCounters) {
+                    Integer counter = acquisitionsCounters.get(name);
+                    if (counter != null) {
+                        counter--;
+                        acquisitionsCounters.put(name, counter);
+                        if (counter == 0) {
+                            if (autoCloseMillis == 0) {
+                                close(name);
+                            } else {
+                                lastReleaseTimestamp.put(name, System.currentTimeMillis());
+                            }
                         }
                     }
                 }
@@ -122,15 +131,22 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
     protected LuceneIndex instantiate(String name) throws IOException {
         LuceneIndex index = instantiated.get(name);
         if (index == null) {
-            index = prepareIndex(name, provideDirectorySupplier(name));
-            LuceneIndex currentInstance = instantiated.putIfAbsent(name, index);
-            if (currentInstance == null) {
-                if (isAutoOpen()) {
-                    index.open();
+            synchronized (lock) {
+                index = instantiated.get(name);
+                if (index == null) {
+                    index = prepareIndex(name, provideDirectorySupplier(name));
+                    if (isAutoOpen()) {
+                        index.open();
+                    }
+                    instantiated.put(name, index);
+                    onInstantiate(index, name);
                 }
             }
         }
         return index;
+    }
+
+    protected void onInstantiate(LuceneIndex index, String name) throws IOException {
     }
 
     @Override

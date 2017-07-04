@@ -13,7 +13,7 @@ It may be compatible with any 5.x and 6.x Lucene version. See "Java 7 and Androi
 
 ## Usage (API)
 
-### Index creation or opening:
+### Index creation or opening
 Memory index:
 ```java
 LuceneIndex index = new LuceneIndex();
@@ -24,7 +24,7 @@ File System index:
 LuceneIndex index = new LuceneIndex(Paths.get("index_data_dir"));
 ```
 
-### Write
+### Writing
 To acquire `IndexWriter`, `index.provideWriter()` may be called, that returns writer wrapped in `Closeable` reference to release it:
 ```java
 try (Reference<IndexWriter> writer = index.provideWriter()) {
@@ -40,28 +40,44 @@ try (Reference<IndexWriter> writer = index.provideWriter()) {
 `IndexWriter` acquisition and releasing may be done explicitly:
 ```java
 IndexWriter writer = index.acquireWriter();
-Document doc = new Document();
-LuceneFields.Long.add(doc, "id", (long)1, LuceneFields.FieldOptions.STORE_INDEX);
-LuceneFields.Keyword.add(doc, "name", "John", LuceneFields.FieldOptions.STORE_INDEX);
-LuceneFields.Text.add(doc, "motto", "Hello World!", LuceneFields.FieldOptions.STORE_INDEX);
-LuceneFields.Double.add(doc, "age", 30.5d, LuceneFields.FieldOptions.STORE_INDEX_DOCVALUE);
-writer.addDocument(doc);
-index.release(writer);
+try {
+    Document doc = new Document();
+    LuceneFields.Long.add(doc, "id", (long)1, LuceneFields.FieldOptions.STORE_INDEX);
+    LuceneFields.Keyword.add(doc, "name", "John", LuceneFields.FieldOptions.STORE_INDEX);
+    LuceneFields.Text.add(doc, "motto", "Hello World!", LuceneFields.FieldOptions.STORE_INDEX);
+    LuceneFields.Double.add(doc, "age", 30.5d, LuceneFields.FieldOptions.STORE_INDEX_DOCVALUE);
+    writer.addDocument(doc);
+} finally {
+    index.release(writer);
+}
 ```
 
+### Simplified Writing
+
+There's also a simplified way that maintains `IndexWriter` automatically:
+```
+index.addDocument(doc);
+```
+or:
+```
+index.updateDocument(term, doc);
+```
 
 ### Search
 Similarily to writer, `IndexSearcher` may be provided as releasable reference:
 ```java
 try (Reference<IndexSearcher> search = index.provideSearcher()) {
-    searcher.use(). //TODO search
+    searcher.use(). ... //TODO search
 }
 ```
 or explicitly acquired and released:
 ```java
 IndexSearcher searcher = index.acquireSearcher();
-searcher. //TODO search
-searcher.release(searcher);
+try {
+    searcher. ... //TODO search
+} finally {
+    searcher.release(searcher);
+}
 ```
 
 ### Simplified Search
@@ -107,13 +123,17 @@ File System indices directory is a root directory for index-specific directories
 Provide releasable reference:
 ```java
 try (Reference<LuceneIndex> index = indices.provide("myindex")) {
-    index.use(). //TODO    
+    index.use(). ... //TODO    
 }
 ```
 or acquire and release explicitly:
 ```java
 LuceneIndex index = indices.acquire("myindex");
-indices.release(index);
+try {
+    index. ... //TODO
+} finally {
+    indices.release(index);    
+}
 ```
 
 #### Index names
@@ -165,8 +185,12 @@ Be aware that when used on Memory indices, data will be lost after close. By def
 
 ## Additional Notes
 
+### References and acquired objects
+Always remember to close References or release acquired objects. This will prevent index grow and memory leaks. Closed references and released objects may not be reused.
+
 ### Thread safety
 Excluding iterators, LucenePlus classes are thread-safe, except Lucene-specific ones (check Lucene documentation for details).
+Be aware that references must be finally closed and acquired objects must be released (by any thread). 
 
 ### Performance notes
 By default indexing performance is low, because auto-commit feature is enabled to ensure you will not lost any data.
@@ -205,7 +229,7 @@ To use as a dependency add to your `pom.xml` into `<dependencies>` section:
 <dependency>
     <groupId>com.sproutigy.libs.luceneplus</groupId>
     <artifactId>luceneplus-core</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 
@@ -214,7 +238,7 @@ Additional artifact `luceneplus-full` has been provided that aggregates all addi
 <dependency>
     <groupId>com.sproutigy.libs.luceneplus</groupId>
     <artifactId>luceneplus-full</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 It is not recommended to use `luceneplus-full` in production as most of added modules probably would not be used, but it is good for starting playing with Lucene and testing its features.  

@@ -6,10 +6,7 @@ import com.sproutigy.libs.luceneplus.core.search.SingleLuceneSearchResults;
 import lombok.*;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -197,28 +194,30 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
         return writer;
     }
 
-    public void release(@NonNull IndexWriter writer) throws IOException {
-        try {
-            if (autoFlush) {
-                writer.flush();
-            }
-            if (autoCommit) {
-                writer.commit();
-            }
-        } catch (Exception e) {
-            this.writer = null;
-        }
-
-        if (this.writer != null && this.writer.isOpen()) {
-            if (searcherManager != null) {
-                searcherManager.maybeRefreshBlocking();
-            }
-        } else {
-            synchronized (lock) {
+    public void release(IndexWriter writer) throws IOException {
+        if (writer != null) {
+            try {
+                if (autoFlush) {
+                    writer.flush();
+                }
+                if (autoCommit) {
+                    writer.commit();
+                }
+            } catch (Exception e) {
                 this.writer = null;
+            }
+
+            if (this.writer != null && this.writer.isOpen()) {
                 if (searcherManager != null) {
-                    searcherManager.close();
-                    searcherManager = null;
+                    searcherManager.maybeRefreshBlocking();
+                }
+            } else {
+                synchronized (lock) {
+                    this.writer = null;
+                    if (searcherManager != null) {
+                        searcherManager.close();
+                        searcherManager = null;
+                    }
                 }
             }
         }
@@ -254,8 +253,10 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
         }
     }
 
-    public void release(@NonNull IndexReader reader) throws IOException {
-        reader.close();
+    public void release(IndexReader reader) throws IOException {
+        if (reader != null) {
+            reader.close();
+        }
     }
 
     public Reference<IndexSearcher> provideSearcher() {
@@ -291,8 +292,10 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
         return searcherManager.acquire();
     }
 
-    public void release(@NonNull IndexSearcher searcher) throws IOException {
-        searcherManager.release(searcher);
+    public void release(IndexSearcher searcher) throws IOException {
+        if (searcher != null) {
+            searcherManager.release(searcher);
+        }
     }
 
     @Override
@@ -307,6 +310,18 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
             topDocs = searcher.search(query, numHits);
         }
         return new SingleLuceneSearchResults(topDocs, searcher, this);
+    }
+
+    public void addDocument(Iterable<IndexableField> doc) throws IOException {
+        try (Reference<IndexWriter> writer = provideWriter()) {
+            writer.use().addDocument(doc);
+        }
+    }
+
+    public void updateDocument(Term term, Iterable<IndexableField> doc) throws IOException {
+        try (Reference<IndexWriter> writer = provideWriter()) {
+            writer.use().updateDocument(term, doc);
+        }
     }
 
     @Override
@@ -343,7 +358,7 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
 
     public void open() {
         synchronized (lock) {
-            if (!isOpen()) {
+            if (directory == null) {
                 if (directorySupplier == null) {
                     throw new IllegalStateException("Could not open index as directory supplier is not provided");
                 }
@@ -356,7 +371,9 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
     @Override
     public void close() throws IOException {
         synchronized (lock) {
-            flush();
+            if (isOpen()) {
+                flush();
+            }
 
             if (searcherManager != null) {
                 searcherManager.close();
@@ -384,7 +401,15 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
 
     protected void checkOpenState() {
         if (!isOpen()) {
-            throw new IllegalStateException("Index is closed");
+            synchronized (lock) {
+                if (!isOpen()) {
+                    if (hasName()) {
+                        throw new IllegalStateException("Index \"" + getName() + "\" is closed");
+                    } else {
+                        throw new IllegalStateException("Index is closed");
+                    }
+                }
+            }
         }
     }
 
@@ -394,6 +419,14 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
             close();
         } catch (Throwable ignore) { }
         super.finalize();
+    }
+
+    @Override
+    public String toString() {
+        if (name != null) {
+            return name;
+        }
+        return super.toString();
     }
 }
 
