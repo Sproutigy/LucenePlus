@@ -24,7 +24,7 @@ File System index:
 LuceneIndex index = new LuceneIndex(Paths.get("index_data_dir"));
 ```
 
-### Write
+### Writing
 To acquire `IndexWriter`, `index.provideWriter()` may be called, that returns writer wrapped in `Closeable` reference to release it:
 ```java
 try (Reference<IndexWriter> writer = index.provideWriter()) {
@@ -52,6 +52,16 @@ try {
 }
 ```
 
+### Simplified Writing
+
+There's also a simplified way that maintains `IndexWriter` automatically:
+```
+index.addDocument(doc);
+```
+or:
+```
+index.updateDocument(term, doc);
+```
 
 ### Search
 Similarily to writer, `IndexSearcher` may be provided as releasable reference:
@@ -219,7 +229,7 @@ To use as a dependency add to your `pom.xml` into `<dependencies>` section:
 <dependency>
     <groupId>com.sproutigy.libs.luceneplus</groupId>
     <artifactId>luceneplus-core</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 
@@ -228,7 +238,7 @@ Additional artifact `luceneplus-full` has been provided that aggregates all addi
 <dependency>
     <groupId>com.sproutigy.libs.luceneplus</groupId>
     <artifactId>luceneplus-full</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 It is not recommended to use `luceneplus-full` in production as most of added modules probably would not be used, but it is good for starting playing with Lucene and testing its features.  

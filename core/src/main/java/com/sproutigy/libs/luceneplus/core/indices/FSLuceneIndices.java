@@ -1,7 +1,9 @@
 package com.sproutigy.libs.luceneplus.core.indices;
 
+import com.sproutigy.libs.luceneplus.core.LuceneIndex;
 import com.sproutigy.libs.luceneplus.core.Supplier;
 import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.ToString;
 import org.apache.lucene.store.Directory;
@@ -24,7 +26,7 @@ public class FSLuceneIndices extends AbstractLuceneIndices {
     private Path rootPath;
     private List<String> cachedNames;
 
-    public FSLuceneIndices(Path rootPath) {
+    public FSLuceneIndices(@NonNull Path rootPath) {
         this.rootPath = rootPath;
     }
 
@@ -34,7 +36,6 @@ public class FSLuceneIndices extends AbstractLuceneIndices {
             @SneakyThrows
             @Override
             public Directory get() {
-                cachedNames.add(name);
                 return FSDirectory.open(resolvePath(name));
             }
         };
@@ -42,13 +43,28 @@ public class FSLuceneIndices extends AbstractLuceneIndices {
 
     @Override
     protected boolean doDelete(String name) throws IOException {
-        cachedNames.remove(name);
+        if (cachedNames != null) {
+            cachedNames.remove(name);
+        }
         return Files.deleteIfExists(resolvePath(name));
     }
 
     @Override
     public boolean exists(String name) throws IOException {
+        if (cachedNames != null && cachedNames.contains(name)) {
+            return true;
+        }
         return Files.exists(resolvePath(name));
+    }
+
+    @Override
+    protected void onInstantiate(LuceneIndex index, String name) throws IOException {
+        if (cachedNames == null) {
+            names(); //fill cache
+            if (cachedNames != null) {
+                cachedNames.add(name);
+            }
+        }
     }
 
     @Override
@@ -71,5 +87,10 @@ public class FSLuceneIndices extends AbstractLuceneIndices {
 
     public Path resolvePath(String name) {
         return rootPath.resolve(name);
+    }
+
+    @Override
+    public String toString() {
+        return rootPath.toString();
     }
 }

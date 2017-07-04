@@ -6,10 +6,7 @@ import com.sproutigy.libs.luceneplus.core.search.SingleLuceneSearchResults;
 import lombok.*;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -315,6 +312,18 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
         return new SingleLuceneSearchResults(topDocs, searcher, this);
     }
 
+    public void addDocument(Iterable<IndexableField> doc) throws IOException {
+        try (Reference<IndexWriter> writer = provideWriter()) {
+            writer.use().addDocument(doc);
+        }
+    }
+
+    public void updateDocument(Term term, Iterable<IndexableField> doc) throws IOException {
+        try (Reference<IndexWriter> writer = provideWriter()) {
+            writer.use().updateDocument(term, doc);
+        }
+    }
+
     @Override
     public void optimize() throws IOException {
         synchronized (lock) {
@@ -349,7 +358,7 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
 
     public void open() {
         synchronized (lock) {
-            if (!isOpen()) {
+            if (directory == null) {
                 if (directorySupplier == null) {
                     throw new IllegalStateException("Could not open index as directory supplier is not provided");
                 }
@@ -362,7 +371,9 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
     @Override
     public void close() throws IOException {
         synchronized (lock) {
-            flush();
+            if (isOpen()) {
+                flush();
+            }
 
             if (searcherManager != null) {
                 searcherManager.close();
@@ -390,7 +401,15 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
 
     protected void checkOpenState() {
         if (!isOpen()) {
-            throw new IllegalStateException("Index is closed");
+            synchronized (lock) {
+                if (!isOpen()) {
+                    if (hasName()) {
+                        throw new IllegalStateException("Index \"" + getName() + "\" is closed");
+                    } else {
+                        throw new IllegalStateException("Index is closed");
+                    }
+                }
+            }
         }
     }
 
@@ -400,6 +419,14 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
             close();
         } catch (Throwable ignore) { }
         super.finalize();
+    }
+
+    @Override
+    public String toString() {
+        if (name != null) {
+            return name;
+        }
+        return super.toString();
     }
 }
 
