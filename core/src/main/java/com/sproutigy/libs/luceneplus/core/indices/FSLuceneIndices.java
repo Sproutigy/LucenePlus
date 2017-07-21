@@ -61,9 +61,9 @@ public class FSLuceneIndices extends AbstractLuceneIndices {
     protected void onInstantiate(LuceneIndex index, String name) throws IOException {
         if (cachedNames == null) {
             names(); //fill cache
-            if (cachedNames != null) {
-                cachedNames.add(name);
-            }
+        }
+        if (cachedNames != null) {
+            cachedNames.add(name);
         }
     }
 
