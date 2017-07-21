@@ -138,8 +138,8 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
                     if (isAutoOpen()) {
                         index.open();
                     }
-                    instantiated.put(name, index);
                     onInstantiate(index, name);
+                    instantiated.put(name, index);
                 }
             }
         }
