@@ -10,10 +10,7 @@ import org.apache.lucene.store.Directory;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public abstract class AbstractLuceneIndices implements LuceneIndices {
     protected final ConcurrentHashMap<String, LuceneIndex> instantiated = new ConcurrentHashMap<>();
@@ -309,7 +306,18 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
             }
 
             if (autoCloseMillis != null && autoCloseMillis > 0) {
-                scheduler = Executors.newScheduledThreadPool(1);
+                scheduler = Executors.newScheduledThreadPool(1, new ThreadFactory() {
+                    @Override
+                    public Thread newThread(Runnable r) {
+                        Thread t = new Thread(r, AbstractLuceneIndices.this.toString() + "-autoClose");
+                        if (!t.isDaemon())
+                            t.setDaemon(true);
+                        if (t.getPriority() != Thread.NORM_PRIORITY - 1)
+                            t.setPriority(Thread.NORM_PRIORITY - 1);
+                        return t;
+                    }
+                });
+
                 scheduler.scheduleWithFixedDelay(new Runnable() {
                     @Override
                     public void run() {
