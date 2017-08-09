@@ -373,7 +373,11 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
     public void close() throws IOException {
         while (!instantiated.isEmpty()) {
             for (String name : instantiated.keySet()) {
-                close(name);
+                try {
+                    close(name);
+                } catch (Throwable e) {
+                    throw new IOException("Could not close index: " + name, e);
+                }
             }
         }
     }
