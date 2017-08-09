@@ -99,7 +99,10 @@ public class LuceneTimeSeries {
                     timeString.append("00");
                 }
                 try {
-                    long time = DATE_FORMAT.parse(timeString.toString()).getTime();
+                    long time;
+                    synchronized (DATE_FORMAT) {
+                        time = DATE_FORMAT.parse(timeString.toString()).getTime();
+                    }
                     boolean ok;
                     if (from != null) {
                         long current = nextTime(time, resolution) - 1;
