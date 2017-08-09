@@ -68,7 +68,15 @@ public class MultiLuceneSearchResults extends AbstractLuceneSearchResults {
         while (nameIndex < names.length - 1) {
             if (currentIndex == null) {
                 nameIndex++;
-                currentIndex = indices.acquire(names[nameIndex]);
+                String name = names[nameIndex];
+
+                if (!indices.isOpen(name) && !indices.exists(name)) {
+                    //in case index has been removed, skip it gracefully
+                    indices.invalidate(name);
+                    continue;
+                }
+
+                currentIndex = indices.acquire(name);
                 currentSearchResults = currentIndex.search(search);
             }
 

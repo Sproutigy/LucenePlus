@@ -30,7 +30,7 @@ public class MemoryLuceneIndices extends AbstractLuceneIndices {
     }
 
     @Override
-    public Collection<String> names() {
+    public Collection<String> names(boolean allowCache) {
         return Collections.unmodifiableSet(new TreeSet<>(instantiated.keySet()));
     }
 }

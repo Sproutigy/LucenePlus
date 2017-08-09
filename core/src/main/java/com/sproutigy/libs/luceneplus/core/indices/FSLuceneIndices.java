@@ -5,22 +5,18 @@ import com.sproutigy.libs.luceneplus.core.Supplier;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 import lombok.SneakyThrows;
-import lombok.ToString;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-@ToString
 @EqualsAndHashCode(callSuper = false)
 public class FSLuceneIndices extends AbstractLuceneIndices {
     private Path rootPath;
@@ -46,14 +42,17 @@ public class FSLuceneIndices extends AbstractLuceneIndices {
         if (cachedNames != null) {
             cachedNames.remove(name);
         }
-        return Files.deleteIfExists(resolvePath(name));
+        return deleteDirectoryIfExists(resolvePath(name));
     }
 
     @Override
-    public boolean exists(String name) throws IOException {
-        if (cachedNames != null && cachedNames.contains(name)) {
-            return true;
+    public boolean exists(String name, boolean allowCache) throws IOException {
+        if (allowCache) {
+            if (cachedNames != null && cachedNames.contains(name)) {
+                return true;
+            }
         }
+
         return Files.exists(resolvePath(name));
     }
 
@@ -63,13 +62,29 @@ public class FSLuceneIndices extends AbstractLuceneIndices {
             names(); //fill cache
         }
         if (cachedNames != null) {
-            cachedNames.add(name);
+            if (!cachedNames.contains(name)) {
+                cachedNames.add(name);
+            }
         }
     }
 
     @Override
-    public Collection<String> names() throws IOException {
-        if (cachedNames == null) {
+    public void invalidate(String name) throws IOException {
+        if (cachedNames != null) {
+            cachedNames.remove(name);
+        }
+        super.invalidate(name);
+    }
+
+    @Override
+    public void invalidate() throws IOException {
+        cachedNames = null;
+        super.invalidate();
+    }
+
+    @Override
+    public Collection<String> names(boolean allowCache) throws IOException {
+        if (!allowCache || cachedNames == null) {
             try {
                 List<String> names = new LinkedList<>();
                 try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(rootPath)) {
@@ -82,6 +97,7 @@ public class FSLuceneIndices extends AbstractLuceneIndices {
                 return Collections.emptySet();
             }
         }
+
         return cachedNames;
     }
 
@@ -92,5 +108,27 @@ public class FSLuceneIndices extends AbstractLuceneIndices {
     @Override
     public String toString() {
         return rootPath.toString();
+    }
+
+
+
+    protected static boolean deleteDirectoryIfExists(final Path directory) throws IOException {
+        if (Files.exists(directory)) {
+            Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+            return true;
+        }
+        return false;
     }
 }

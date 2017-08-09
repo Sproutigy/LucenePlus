@@ -27,13 +27,16 @@ public interface LuceneIndices extends Iterable<LuceneIndex>, LuceneIndexOperati
     boolean isEmpty(String prefix) throws IOException;
 
     boolean exists(String name) throws IOException;
+    boolean exists(String name, boolean allowCache) throws IOException;
 
     Reference<LuceneIndex> provide(String name) throws IOException;
     LuceneIndex acquire(String name) throws IOException;
     void release(LuceneIndex index) throws IOException;
 
     Collection<String> names() throws IOException;
+    Collection<String> names(boolean allowCache) throws IOException;
     Collection<String> names(String prefix) throws IOException;
+    Collection<String> names(String prefix, boolean allowCache) throws IOException;
 
     LuceneSearchResults search(LuceneSearch search, String... names) throws IOException;
 
@@ -42,6 +45,9 @@ public interface LuceneIndices extends Iterable<LuceneIndex>, LuceneIndexOperati
 
     CloseableIterator<LuceneIndex> iterator();
     CloseableIterator<LuceneIndex> iterator(String prefix) throws IOException;
+
+    void invalidate(String name) throws IOException;
+    void invalidate() throws IOException;
 
     boolean delete(String name) throws IOException;
     void close(String name) throws IOException;

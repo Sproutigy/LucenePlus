@@ -44,7 +44,7 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
 
     private ScheduledExecutorService scheduler;
 
-    private final Object lock = new Object();
+    protected final Object lock = new Object();
 
     protected LuceneIndex prepareIndex(String name, Supplier<Directory> directorySupplier) {
         LuceneIndex index = new LuceneIndex(name, directorySupplier, indexWriterConfigSupplier);
@@ -59,8 +59,19 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
     protected abstract boolean doDelete(String name) throws IOException;
 
     @Override
+    public boolean exists(String name, boolean allowCache) throws IOException {
+        if (allowCache) {
+            if (instantiated.containsKey(name)) {
+                return true;
+            }
+        }
+
+        return names(allowCache).contains(name);
+    }
+
+    @Override
     public boolean exists(String name) throws IOException {
-        return instantiated.containsKey(name) || names().contains(name);
+        return exists(name, false);
     }
 
     @Override
@@ -143,6 +154,11 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
                 }
             }
         }
+        else {
+            if (!index.isOpen() && isAutoOpen()) {
+                index.open();
+            }
+        }
         return index;
     }
 
@@ -161,13 +177,23 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
     }
 
     @Override
+    public Collection<String> names() throws IOException {
+        return names(false);
+    }
+
+    @Override
     public Collection<String> names(String prefix) throws IOException {
+        return names(prefix, false);
+    }
+
+    @Override
+    public Collection<String> names(String prefix, boolean allowCache) throws IOException {
         if (prefix == null || prefix.isEmpty()) {
-            return names();
+            return names(allowCache);
         }
 
         List<String> result = new LinkedList<>();
-        for (String name : names()) {
+        for (String name : names(allowCache)) {
             if (name.startsWith(prefix)) {
                 result.add(name);
             }
@@ -228,7 +254,7 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
     public LuceneSearchResults search(LuceneSearch search, String... names) throws IOException {
         String[] indicesNames = names;
         if (names == null || names.length == 0) {
-            indicesNames = names().toArray(new String[0]);
+            indicesNames = names(true).toArray(new String[0]);
         }
         return new MultiLuceneSearchResults(this, indicesNames, search);
     }
@@ -351,6 +377,27 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
     }
 
     @Override
+    public void invalidate(String name) throws IOException {
+        if (!exists(name)) {
+            try {
+                close(name);
+            } catch (Exception ignore) {
+            }
+            instantiated.remove(name);
+        }
+    }
+
+    @Override
+    public void invalidate() throws IOException {
+        for (String name : instantiated.keySet()) {
+            synchronized (lock) {
+                invalidate(name);
+            }
+        }
+    }
+
+
+    @Override
     public void close(String name) throws IOException {
         if (name != null) {
             LuceneIndex index;
@@ -408,6 +455,7 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
 
         for (LuceneIndex index : indicesToClose) {
             try {
+                instantiated.remove(index.getName());
                 closeIndex(index);
             } catch (IOException ignore) { } //tried and failed, maybe next time
         }
