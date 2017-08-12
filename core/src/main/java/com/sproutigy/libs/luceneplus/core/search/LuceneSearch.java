@@ -15,6 +15,9 @@ public final class LuceneSearch {
 
     public static final MatchAllDocsQuery MATCH_ALL_QUERY = new MatchAllDocsQuery();
 
+    public static final LuceneSearch MATCH_ALL = builder().query(MATCH_ALL_QUERY).build();
+
+
     @Getter
     @Builder.Default
     private Query query = MATCH_ALL_QUERY;

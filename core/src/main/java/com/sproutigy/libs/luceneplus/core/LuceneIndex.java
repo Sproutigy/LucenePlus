@@ -8,6 +8,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
+import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.RAMDirectory;
@@ -372,7 +373,9 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
     public void close() throws IOException {
         synchronized (lock) {
             if (isOpen()) {
-                flush();
+                try {
+                    flush();
+                } catch (AlreadyClosedException ignore) { }
             }
 
             if (searcherManager != null) {

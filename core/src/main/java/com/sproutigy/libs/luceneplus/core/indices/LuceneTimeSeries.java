@@ -86,20 +86,23 @@ public class LuceneTimeSeries {
             long current = from;
             while (truncateTime(current, resolution) < to) {
                 String s = indexName(current);
-                if (luceneIndices.exists(s)) {
+                if (luceneIndices.exists(s, true)) {
                     selectedCollection.add(s);
                 }
                 current += resolution.durationMilliseconds;
             }
         }
         else {
-            for (String name : luceneIndices.names(prefix)) {
+            for (String name : luceneIndices.names(prefix, true)) {
                 StringBuilder timeString = new StringBuilder(name.substring(prefix.length()));
                 while (timeString.length() < 14) {
                     timeString.append("00");
                 }
                 try {
-                    long time = DATE_FORMAT.parse(timeString.toString()).getTime();
+                    long time;
+                    synchronized (DATE_FORMAT) {
+                        time = DATE_FORMAT.parse(timeString.toString()).getTime();
+                    }
                     boolean ok;
                     if (from != null) {
                         long current = nextTime(time, resolution) - 1;
