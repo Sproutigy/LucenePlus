@@ -69,7 +69,7 @@ public class LuceneIndicesTest {
         LuceneIndices indices = new MemoryLuceneIndices();
         fillIndex(indices, "x");
         assertTrue(indices.isOpen("x"));
-        indices.setAutoCloseInstantly();
+        indices.setAutoClosePolicy(AutoClosePolicy.INSTANTLY_OPTIMIZE);
         fillIndex(indices, "x");
         assertFalse(indices.isOpen("x"));
     }
@@ -77,7 +77,7 @@ public class LuceneIndicesTest {
     @Test
     public void testAutoCloseDelayed() throws IOException, InterruptedException {
         LuceneIndices indices = new MemoryLuceneIndices();
-        indices.setAutoClose(250L, TimeUnit.MILLISECONDS);
+        indices.setAutoClosePolicy(AutoClosePolicy.builder().delay(100, TimeUnit.MILLISECONDS).build());
         fillIndex(indices, "x");
         assertTrue(indices.isOpen("x"));
 
@@ -88,7 +88,7 @@ public class LuceneIndicesTest {
     @Test
     public void testAutoCloseWithMultiplyAcquiredIndex() throws IOException {
         LuceneIndices indices = new MemoryLuceneIndices();
-        indices.setAutoCloseInstantly();
+        indices.setAutoClosePolicy(AutoClosePolicy.INSTANTLY);
         LuceneIndex indexInstance1 = indices.acquire("a");
         LuceneIndex indexInstance2 = indices.acquire("a");
         indices.release(indexInstance2);

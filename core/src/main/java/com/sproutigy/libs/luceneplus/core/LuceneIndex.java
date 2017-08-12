@@ -329,10 +329,13 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
     public void optimize() throws IOException {
         synchronized (lock) {
             IndexWriter writer = acquireWriter();
-            writer.forceMerge(1, true);
-            writer.forceMergeDeletes(true);
-            writer.deleteUnusedFiles();
-            release(writer);
+            try {
+                writer.forceMerge(1, true);
+                writer.forceMergeDeletes(true);
+                writer.deleteUnusedFiles();
+            } finally {
+                release(writer);
+            }
         }
     }
 
@@ -357,8 +360,12 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
         }
     }
 
-    public void open() {
+    public boolean open() {
         synchronized (lock) {
+            if (isOpen()) {
+                return false;
+            }
+
             if (directory == null) {
                 if (directorySupplier == null) {
                     throw new IllegalStateException("Could not open index as directory supplier is not provided");
@@ -366,6 +373,8 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
                 directory = directorySupplier.get();
                 owningDirectory = true;
             }
+
+            return true;
         }
     }
 
