@@ -28,7 +28,7 @@ public class LuceneIndexRemovalTest {
         deleteDirectoryIfExists(root);
         indices = new FSLuceneIndices(root);
 
-        indices.setAutoCloseInstantly();
+        indices.setAutoClosePolicy(AutoClosePolicy.INSTANTLY);
 
         try (Reference<LuceneIndex> index1 = indices.provide("test1")) {
             Document doc = new Document();
