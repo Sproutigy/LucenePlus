@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface LuceneSearchResults extends CloseableIterator<LuceneSearchHit> {
     boolean hasTotal();
-    Integer total();
+    Long total();
 
     boolean hasCount();
     Integer count();

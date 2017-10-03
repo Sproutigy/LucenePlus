@@ -33,7 +33,7 @@ public class MultiLuceneSearchResults extends AbstractLuceneSearchResults {
     }
 
     @Override
-    public Integer total() {
+    public Long total() {
         return null;
     }
 
