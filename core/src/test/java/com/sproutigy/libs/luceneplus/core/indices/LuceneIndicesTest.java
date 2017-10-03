@@ -30,10 +30,17 @@ public class LuceneIndicesTest {
         assertTrue(indices.exists("b"));
         assertFalse(indices.exists("c"));
 
-        LuceneSearch search = LuceneSearch.builder().query(new TermQuery(new Term("n", "b"))).build();
+        LuceneSearch search = LuceneSearch.builder().query(new TermQuery(new Term("n", "b"))).numHits(1).build();
         LuceneSearchResults results = indices.search(search);
+
         assertFalse(results.hasCount());
-        assertNull(results.count());
+        assertEquals(1, results.count());
+        assertTrue(results.hasCount());
+
+        assertFalse(results.hasTotal());
+        assertEquals(1, results.total());
+        assertTrue(results.hasTotal());
+
         List<LuceneSearchHit> items = results.toList();
         assertEquals(1, items.size());
         assertEquals("b", items.get(0).getIndexName());

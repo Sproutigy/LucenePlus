@@ -35,8 +35,8 @@ public class SingleLuceneSearchResults extends AbstractLuceneSearchResults {
     }
 
     @Override
-    public Long total() {
-        return (long)topDocs.totalHits;
+    public long total() {
+        return topDocs.totalHits;
     }
 
     @Override
@@ -45,7 +45,7 @@ public class SingleLuceneSearchResults extends AbstractLuceneSearchResults {
     }
 
     @Override
-    public Integer count() {
+    public int count() {
         return topDocs.scoreDocs.length;
     }
 

@@ -7,10 +7,10 @@ import java.util.List;
 
 public interface LuceneSearchResults extends CloseableIterator<LuceneSearchHit> {
     boolean hasTotal();
-    Long total();
+    long total();
 
     boolean hasCount();
-    Integer count();
+    int count();
 
     /**
      * Loads entire results with whole documents into memory.
