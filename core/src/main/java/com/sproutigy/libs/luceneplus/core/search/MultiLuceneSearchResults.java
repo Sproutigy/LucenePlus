@@ -172,12 +172,9 @@ public class MultiLuceneSearchResults extends AbstractLuceneSearchResults {
     @SneakyThrows
     @Override
     public void remove() {
-        if (currentItem instanceof LuceneSearchHitImpl) {
-            try (Reference<IndexWriter> writer = currentIndex.provideWriter()) {
-                writer.use().tryDeleteDocument(((LuceneSearchHitImpl)currentItem).searcher.getIndexReader(), ((LuceneSearchHitImpl) currentItem).docId);
-            }
+        try (Reference<IndexWriter> writer = currentIndex.provideWriter()) {
+            writer.use().tryDeleteDocument(currentItem.getReader(), currentItem.getDocId());
         }
-        throw new UnsupportedOperationException();
     }
 
     private static void unlinkSearcher(LuceneSearchHit item) {

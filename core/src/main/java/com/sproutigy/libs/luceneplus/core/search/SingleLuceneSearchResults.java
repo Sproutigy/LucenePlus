@@ -79,8 +79,8 @@ public class SingleLuceneSearchResults extends AbstractLuceneSearchResults {
     @SneakyThrows
     @Override
     public void remove() {
-        try(Reference<IndexWriter> writer = index.provideWriter()) {
-            writer.use().tryDeleteDocument(searcher.getIndexReader(), current.docId);
+        try (Reference<IndexWriter> writer = index.provideWriter()) {
+            writer.use().tryDeleteDocument(current.getReader(), current.getDocId());
         }
     }
 
