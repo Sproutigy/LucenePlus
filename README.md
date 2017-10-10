@@ -6,7 +6,7 @@ Plus it adds ability to manage multiple indices with optional time series suppor
 
 
 ## Lucene version
-Currently supported Lucene version is: *6.6.0*. 
+Currently supported Lucene version is: *6.6.1*.
 
 It may be compatible with any 5.x and 6.x Lucene version. See "Java 7 and Android compatibility" section for more details.
 
@@ -229,7 +229,7 @@ To use as a dependency add to your `pom.xml` into `<dependencies>` section:
 <dependency>
     <groupId>com.sproutigy.libs.luceneplus</groupId>
     <artifactId>luceneplus-core</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
 </dependency>
 ```
 
@@ -238,7 +238,7 @@ Additional artifact `luceneplus-full` has been provided that aggregates all addi
 <dependency>
     <groupId>com.sproutigy.libs.luceneplus</groupId>
     <artifactId>luceneplus-full</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
 </dependency>
 ```
 It is not recommended to use `luceneplus-full` in production as most of added modules probably would not be used, but it is good for starting playing with Lucene and testing its features.  
