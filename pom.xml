@@ -11,7 +11,7 @@
     <groupId>com.sproutigy.libs.luceneplus</groupId>
     <artifactId>luceneplus-parent</artifactId>
     <packaging>pom</packaging>
-    <version>1.1.1-SNAPSHOT</version>
+    <version>1.0.5-SNAPSHOT</version>
     <modules>
         <module>core</module>
         <module>full</module>
