@@ -36,10 +36,12 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
     @Getter @Setter
     private IndexWriterConfigSupplier indexWriterConfigSupplier;
 
-    @Getter
-    private Long autoCloseMillis = null;
+    @NonNull @Getter
+    private AutoClosePolicy autoClosePolicy = AutoClosePolicy.DISABLED;
 
     private ScheduledExecutorService scheduler;
+
+    private ExecutorService optimizationExecutor;
 
     protected final Object lock = new Object();
 
@@ -99,7 +101,7 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
             throw new IllegalArgumentException("name is empty");
         }
 
-        if (autoCloseMillis != null) {
+        if (getAutoCloseMillis() != null) {
             synchronized (acquisitionsCounters) {
                 Integer counter = acquisitionsCounters.get(name);
                 if (counter == null) {
@@ -115,8 +117,9 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
 
     @Override
     public void release(LuceneIndex index) throws IOException {
+        AutoClosePolicy autoClosePolicy = getAutoClosePolicy();
         if (index != null) {
-            if (autoCloseMillis != null) {
+            if (autoClosePolicy.isEnabled()) {
                 String name = index.getName();
                 synchronized (acquisitionsCounters) {
                     Integer counter = acquisitionsCounters.get(name);
@@ -124,7 +127,14 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
                         counter--;
                         acquisitionsCounters.put(name, counter);
                         if (counter == 0) {
-                            if (autoCloseMillis == 0) {
+                            if (autoClosePolicy.getDelayMillis() == 0) {
+                                if (autoClosePolicy.isOptimize()) {
+                                    try {
+                                        index.optimize();
+                                    } catch (Throwable ignore) {
+                                    }
+                                }
+
                                 close(name);
                             } else {
                                 lastReleaseTimestamp.put(name, System.currentTimeMillis());
@@ -286,26 +296,44 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
         }
     }
 
-    @Override
-    public void setAutoCloseMillis(Long delayMillis) {
+    public void setAutoClosePolicy(@NonNull AutoClosePolicy autoClosePolicy) {
+        this.autoClosePolicy = autoClosePolicy;
+
+        Long delayMillis = autoClosePolicy.isEnabled() ? autoClosePolicy.getDelayMillis() : null;
         if (delayMillis != null && delayMillis < 0) {
-            throw new IllegalArgumentException("delayMillis < 0");
+            throw new IllegalArgumentException("delay < 0");
         }
 
         synchronized (acquisitionsCounters) {
-            if (autoCloseMillis == null && lastReleaseTimestamp != null) {
+            if (delayMillis == null && lastReleaseTimestamp != null) {
                 lastReleaseTimestamp.clear();
             } else if (delayMillis != null) {
                 lastReleaseTimestamp = new HashMap<>();
             }
 
-            autoCloseMillis = delayMillis;
-
             if (scheduler != null) {
-                 scheduler.shutdownNow();
+                scheduler.shutdownNow();
+                scheduler = null;
             }
 
-            if (autoCloseMillis != null && autoCloseMillis > 0) {
+            if (optimizationExecutor != null) {
+                optimizationExecutor.shutdownNow();
+                optimizationExecutor = null;
+            }
+
+            optimizationExecutor = Executors.newSingleThreadExecutor( new ThreadFactory() {
+                @Override
+                public Thread newThread(Runnable r) {
+                    Thread t = new Thread(r, AbstractLuceneIndices.this.toString() + "-optimize");
+                    if (t.isDaemon())
+                        t.setDaemon(false);
+                    if (t.getPriority() != Thread.MIN_PRIORITY + 1)
+                        t.setPriority(Thread.MIN_PRIORITY + 1);
+                    return t;
+                }
+            });
+
+            if (delayMillis != null && delayMillis > 0) {
                 scheduler = Executors.newScheduledThreadPool(1, new ThreadFactory() {
                     @Override
                     public Thread newThread(Runnable r) {
@@ -325,23 +353,14 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
                             doAutoClose();
                         } catch (Throwable ignore) { } //ensure that this will be called in the future
                     }
-                }, autoCloseMillis, autoCloseMillis, TimeUnit.MILLISECONDS);
+                }, delayMillis, delayMillis, TimeUnit.MILLISECONDS);
             }
         }
     }
 
-    @Override
-    public void setAutoClose(Long delay, @NonNull TimeUnit unit) {
-        if (delay != null) {
-            setAutoCloseMillis(unit.toMillis(delay));
-        } else {
-            setAutoCloseMillis(null);
-        }
-    }
-
-    @Override
-    public void setAutoCloseInstantly() {
-        setAutoCloseMillis(0L);
+    private Long getAutoCloseMillis() {
+        AutoClosePolicy policy = getAutoClosePolicy();
+        return policy.isEnabled() ? policy.getDelayMillis() : null;
     }
 
     @Override
@@ -409,7 +428,7 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
     public void close(String name) throws IOException {
         if (name != null) {
             LuceneIndex index;
-            if (autoCloseMillis != null) {
+            if (getAutoCloseMillis() != null) {
                 synchronized (acquisitionsCounters) {
                     index = instantiated.remove(name);
                     acquisitionsCounters.remove(name);
@@ -444,6 +463,11 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
     }
 
     private void doAutoClose() {
+        AutoClosePolicy policy = getAutoClosePolicy();
+        if (policy == null) return;
+
+        long autoCloseMillis = policy.getDelayMillis();
+
         Collection<LuceneIndex> indicesToClose = new LinkedList<>();
         synchronized (acquisitionsCounters) {
             for (Map.Entry<String, Integer> entry : acquisitionsCounters.entrySet()) {
@@ -461,11 +485,28 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
             }
         }
 
-        for (LuceneIndex index : indicesToClose) {
+        for (final LuceneIndex index : indicesToClose) {
             try {
                 instantiated.remove(index.getName());
-                closeIndex(index);
-            } catch (IOException ignore) { } //tried and failed, maybe next time
+
+                Executor optimizationExecutor = this.optimizationExecutor;
+                if (policy.isOptimize() && optimizationExecutor != null) {
+                    optimizationExecutor.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                index.optimize();
+                            } catch (Throwable ignore) { }
+
+                            try {
+                                closeIndex(index);
+                            } catch (Throwable ignore) { }
+                        }
+                    });
+                } else {
+                    closeIndex(index);
+                }
+            } catch (Throwable ignore) { }
         }
     }
 

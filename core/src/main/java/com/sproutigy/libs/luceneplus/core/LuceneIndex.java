@@ -41,7 +41,6 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
 
     private Analyzer analyzer = DEFAULT_ANALYZER;
 
-    protected IndexWriterConfig writerConfig;
     protected IndexWriter writer;
 
     protected ReferenceManager<IndexSearcher> searcherManager;
@@ -78,7 +77,7 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
 
     public LuceneIndex(@NonNull Path path, @NonNull LuceneOpenMode openMode) throws IOException {
         this(FSDirectory.open(path));
-        setOpenMode0(openMode);
+        this.openMode = openMode;
         owningDirectory = true;
     }
 
@@ -107,15 +106,7 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
         if (isOpen()) {
             throw new IllegalStateException("Could not change openMode while index is opened");
         }
-        setOpenMode0(openMode);
-    }
-
-    protected void setOpenMode0(LuceneOpenMode mode) {
-        this.openMode = mode;
-
-        if (mode == LuceneOpenMode.CREATE) getWriterConfig().setOpenMode(IndexWriterConfig.OpenMode.CREATE);
-        if (mode == LuceneOpenMode.UPDATE) getWriterConfig().setOpenMode(IndexWriterConfig.OpenMode.APPEND);
-        if (mode == LuceneOpenMode.CREATE_OR_UPDATE) getWriterConfig().setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
+        this.openMode = openMode;
     }
 
     public boolean isReadOnly() {
@@ -124,37 +115,27 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
 
     @Override
     public Analyzer getAnalyzer() {
-        if (writerConfig != null) {
-            return writerConfig.getAnalyzer();
-        }
         return analyzer;
     }
 
     @Override
     public void setAnalyzer(@NonNull Analyzer analyzer) {
-        if (writerConfig != null) {
-            throw new IllegalStateException("Writer configuration is already instantiated");
-        }
         this.analyzer = analyzer;
     }
 
-    public IndexWriterConfig getWriterConfig() {
-        if (writerConfig == null) {
-            synchronized (lock) {
-                if (writerConfig == null) {
-                    if (indexWriterConfigSupplier != null) {
-                        writerConfig = indexWriterConfigSupplier.get(analyzer);
-                    } else {
-                        writerConfig = new IndexWriterConfig(analyzer);
-                    }
-                }
-            }
+    protected IndexWriterConfig provideNewWriterConfig() {
+        IndexWriterConfig writerConfig;
+        if (indexWriterConfigSupplier != null) {
+            writerConfig = indexWriterConfigSupplier.get(analyzer);
+        } else {
+            writerConfig = new IndexWriterConfig(analyzer);
         }
-        return writerConfig;
-    }
 
-    public void setWriterConfig(@NonNull IndexWriterConfig writerConfig) {
-        this.writerConfig = writerConfig;
+        if (openMode == LuceneOpenMode.CREATE) writerConfig.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
+        if (openMode == LuceneOpenMode.UPDATE) writerConfig.setOpenMode(IndexWriterConfig.OpenMode.APPEND);
+        if (openMode == LuceneOpenMode.CREATE_OR_UPDATE) writerConfig.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
+
+        return writerConfig;
     }
 
     public Reference<IndexWriter> provideWriter() {
@@ -187,7 +168,12 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
                         throw new IllegalStateException("Index is opened in read-only openMode");
                     }
                     checkOpenState();
-                    writer = new IndexWriter(directory, getWriterConfig());
+
+                    writer = new IndexWriter(directory, provideNewWriterConfig());
+
+                    if (getOpenMode() == LuceneOpenMode.CREATE) {
+                        setOpenMode(LuceneOpenMode.CREATE_OR_UPDATE); //ensure that the next writer will not overwrite index
+                    }
                 }
             }
         }
@@ -329,10 +315,13 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
     public void optimize() throws IOException {
         synchronized (lock) {
             IndexWriter writer = acquireWriter();
-            writer.forceMerge(1, true);
-            writer.forceMergeDeletes(true);
-            writer.deleteUnusedFiles();
-            release(writer);
+            try {
+                writer.forceMerge(1, true);
+                writer.forceMergeDeletes(true);
+                writer.deleteUnusedFiles();
+            } finally {
+                release(writer);
+            }
         }
     }
 
@@ -357,8 +346,12 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
         }
     }
 
-    public void open() {
+    public boolean open() {
         synchronized (lock) {
+            if (isOpen()) {
+                return false;
+            }
+
             if (directory == null) {
                 if (directorySupplier == null) {
                     throw new IllegalStateException("Could not open index as directory supplier is not provided");
@@ -366,6 +359,8 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
                 directory = directorySupplier.get();
                 owningDirectory = true;
             }
+
+            return true;
         }
     }
 
@@ -381,9 +376,6 @@ public class LuceneIndex implements LuceneIndexOperations, Closeable {
             if (searcherManager != null) {
                 searcherManager.close();
                 searcherManager = null;
-            }
-            if (writerConfig != null) {
-                writerConfig = null;
             }
             if (writer != null) {
                 writer.close();

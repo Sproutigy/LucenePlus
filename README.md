@@ -6,7 +6,7 @@ Plus it adds ability to manage multiple indices with optional time series suppor
 
 
 ## Lucene version
-Currently supported Lucene version is: *6.6.0*. 
+Currently supported Lucene version is: *7.0.1*.
 
 It may be compatible with any 5.x and 6.x Lucene version. See "Java 7 and Android compatibility" section for more details.
 
@@ -173,13 +173,13 @@ When using multiple indices, especially when dealing with time series, some open
 It is recommended to close index when it is not needed for longer time. Auto close feature helps to ensure that.
 
 ```java
-indices.setAutoCloseMillis(0L); // auto-close instantly
-indices.setAutoCloseInstantly(); // same as above
+indices.setAutoClosePolicy(AutoClosePolicy.INSTANTLY); // auto-close instantly
 
-indices.setAutoCloseMillis(3000L); // auto-close after 3 seconds
-indices.setAutoClose(3, TimeUnit.SECONDS); // same as above
+indices.setAutoClosePolicy(AutoClosePolicy.builder().delay(3, TimeUnit.SECONDS).build()); // auto-close unused indices after 3 seconds
 
-indices.setAutoCloseMillis(null); // disable auto-close
+indices.setAutoClosePolicy(AutoClosePolicy.builder().delay(15, TimeUnit.MINUTES).optimize().build()); // after 15 minutes optimize unused indices and close them
+
+indices.setAutoClosePolicy(AutoClosePolicy.DISABLED); // disable auto-close
 ```
 Be aware that when used on Memory indices, data will be lost after close. By default this feature is disabled.
 
@@ -229,7 +229,7 @@ To use as a dependency add to your `pom.xml` into `<dependencies>` section:
 <dependency>
     <groupId>com.sproutigy.libs.luceneplus</groupId>
     <artifactId>luceneplus-core</artifactId>
-    <version>1.0.3</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -238,7 +238,7 @@ Additional artifact `luceneplus-full` has been provided that aggregates all addi
 <dependency>
     <groupId>com.sproutigy.libs.luceneplus</groupId>
     <artifactId>luceneplus-full</artifactId>
-    <version>1.0.3</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 It is not recommended to use `luceneplus-full` in production as most of added modules probably would not be used, but it is good for starting playing with Lucene and testing its features.  

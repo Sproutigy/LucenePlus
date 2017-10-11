@@ -35,7 +35,7 @@ public class SingleLuceneSearchResults extends AbstractLuceneSearchResults {
     }
 
     @Override
-    public Integer total() {
+    public long total() {
         return topDocs.totalHits;
     }
 
@@ -45,7 +45,7 @@ public class SingleLuceneSearchResults extends AbstractLuceneSearchResults {
     }
 
     @Override
-    public Integer count() {
+    public int count() {
         return topDocs.scoreDocs.length;
     }
 
@@ -79,8 +79,8 @@ public class SingleLuceneSearchResults extends AbstractLuceneSearchResults {
     @SneakyThrows
     @Override
     public void remove() {
-        try(Reference<IndexWriter> writer = index.provideWriter()) {
-            writer.use().tryDeleteDocument(searcher.getIndexReader(), current.docId);
+        try (Reference<IndexWriter> writer = index.provideWriter()) {
+            writer.use().tryDeleteDocument(current.getReader(), current.getDocId());
         }
     }
 

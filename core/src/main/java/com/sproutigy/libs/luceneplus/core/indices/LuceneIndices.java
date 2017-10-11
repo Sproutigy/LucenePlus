@@ -3,12 +3,10 @@ package com.sproutigy.libs.luceneplus.core.indices;
 import com.sproutigy.libs.luceneplus.core.*;
 import com.sproutigy.libs.luceneplus.core.search.LuceneSearch;
 import com.sproutigy.libs.luceneplus.core.search.LuceneSearchResults;
-import lombok.NonNull;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collection;
-import java.util.concurrent.TimeUnit;
 
 public interface LuceneIndices extends Iterable<LuceneIndex>, LuceneIndexOperations, Closeable {
     void setIndexWriterConfigSupplier(IndexWriterConfigSupplier indexWriterConfigSupplier);
@@ -19,10 +17,8 @@ public interface LuceneIndices extends Iterable<LuceneIndex>, LuceneIndexOperati
     void setAutoOpen(boolean autoOpen);
     boolean isAutoOpen();
 
-    void setAutoCloseMillis(Long delayMillis);
-    void setAutoClose(Long delay, @NonNull TimeUnit unit);
-    void setAutoCloseInstantly();
-    Long getAutoCloseMillis();
+    AutoClosePolicy getAutoClosePolicy();
+    void setAutoClosePolicy(AutoClosePolicy autoClosePolicy);
 
     boolean isEmpty(String prefix) throws IOException;
 
