@@ -2,10 +2,7 @@ package com.sproutigy.libs.luceneplus.core.indices;
 
 import com.sproutigy.libs.luceneplus.core.LuceneIndex;
 import com.sproutigy.libs.luceneplus.core.Reference;
-import lombok.Getter;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -37,6 +34,28 @@ public class LuceneTimeSeries {
 
         int substringLength;
     }
+
+    @Data
+    @AllArgsConstructor
+    public static class TimeRange {
+
+        @NonNull
+        @Getter
+        private long startAsTimestamp;
+
+        @NonNull
+        @Getter
+        private long endAsTimestamp;
+
+        public long getDurationMillis() {
+            return endAsTimestamp - startAsTimestamp;
+        }
+
+        public boolean matches(long timestamp) {
+            return (startAsTimestamp >= timestamp && endAsTimestamp <= timestamp);
+        }
+    }
+
 
     @NonNull
     private LuceneIndices luceneIndices;
@@ -84,7 +103,7 @@ public class LuceneTimeSeries {
         if (from != null && to != null) {
             selectedCollection = new LinkedList<>();
             long current = from;
-            while (truncateTime(current, resolution) < to) {
+            while (truncateTime(current, resolution) <= to) {
                 String s = indexName(current);
                 if (luceneIndices.exists(s, true)) {
                     selectedCollection.add(s);
@@ -94,30 +113,20 @@ public class LuceneTimeSeries {
         }
         else {
             for (String name : luceneIndices.names(prefix, true)) {
-                StringBuilder timeString = new StringBuilder(name.substring(prefix.length()));
-                while (timeString.length() < 14) {
-                    timeString.append("00");
-                }
-                try {
-                    long time;
-                    synchronized (DATE_FORMAT) {
-                        time = DATE_FORMAT.parse(timeString.toString()).getTime();
-                    }
-                    boolean ok;
-                    if (from != null) {
-                        long current = nextTime(time, resolution) - 1;
-                        ok = current > from;
-                    } else if (to != null) {
-                        long current = truncateTime(time, resolution);
-                        ok = current < to;
-                    } else {
-                        ok = true;
-                    }
+                boolean ok = true;
+                if (from != null || to != null) {
+                    TimeRange timeRange = rangeOf(name);
+                    if (timeRange == null) continue;
 
-                    if (ok) {
-                        selectedCollection.add(name);
+                    if (from != null) {
+                        ok = timeRange.getEndAsTimestamp() > from;
                     }
-                } catch (ParseException ignore) {
+                    if (ok && to != null) {
+                        ok = timeRange.getStartAsTimestamp() < to;
+                    }
+                }
+                if (ok) {
+                    selectedCollection.add(name);
                 }
             }
         }
@@ -130,6 +139,25 @@ public class LuceneTimeSeries {
         }
 
         return selected;
+    }
+
+    public TimeRange rangeOf(String name) {
+        StringBuilder timeString = new StringBuilder(name.substring(prefix.length()));
+        while (timeString.length() < 14) {
+            timeString.append("00");
+        }
+        try {
+            long time;
+            synchronized (DATE_FORMAT) {
+                time = DATE_FORMAT.parse(timeString.toString()).getTime();
+            }
+
+            long start = truncateTime(time, resolution);
+            long end = nextTime(time, resolution) - 1;
+            return new TimeRange(start, end);
+        } catch (ParseException ignore) {
+            return null;
+        }
     }
 
     private static long truncateTime(long time, Resolution resolution) {

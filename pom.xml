@@ -11,14 +11,14 @@
     <groupId>com.sproutigy.libs.luceneplus</groupId>
     <artifactId>luceneplus-parent</artifactId>
     <packaging>pom</packaging>
-    <version>1.0.4</version>
+    <version>1.1.0</version>
     <modules>
         <module>core</module>
         <module>full</module>
     </modules>
 
     <properties>
-        <lucene.version>7.0.1</lucene.version>
+        <lucene.version>7.3.0</lucene.version>
         <java.version>1.7</java.version>
     </properties>
 
@@ -26,7 +26,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.16.16</version>
+            <version>1.16.20</version>
             <scope>provided</scope>
             <optional>true</optional>
         </dependency>

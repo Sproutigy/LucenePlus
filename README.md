@@ -6,7 +6,7 @@ Plus it adds ability to manage multiple indices with optional time series suppor
 
 
 ## Lucene version
-Currently supported Lucene version is: *7.0.1*.
+Currently supported Lucene version is: *7.x*. Its default dependency is *7.3.0*.
 
 It may be compatible with any 5.x and 6.x Lucene version. See "Java 7 and Android compatibility" section for more details.
 

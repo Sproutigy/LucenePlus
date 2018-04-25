@@ -33,7 +33,7 @@ public class LuceneIndexTest {
 
         LuceneSearchResults results = index.search(LuceneSearch.builder().query(new TermQuery(new Term("name", "James"))).build());
         assertTrue(results.hasCount());
-        assertEquals(1, (int)results.count());
+        assertEquals(1, results.count());
         assertEquals("James", results.toList().get(0).getField("name").stringValue());
     }
 
