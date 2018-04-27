@@ -66,7 +66,7 @@ index.updateDocument(term, doc);
 ### Search
 Similarily to writer, `IndexSearcher` may be provided as releasable reference:
 ```java
-try (Reference<IndexSearcher> search = index.provideSearcher()) {
+try (Reference<IndexSearcher> searcher = index.provideSearcher()) {
     searcher.use(). ... //TODO search
 }
 ```
@@ -90,7 +90,7 @@ LuceneSearch search = LuceneSearch.builder()
 
 LuceneSearchResults results = index.search(search);
 
-for (LuceneSearchHit hit : results) {
+for (LuceneSearchHit hit : results.toList()) {
     Document doc = hit.getDocument();
     long id = LuceneFields.Long.get(doc, "id");
     System.out.println("document #" + id);
