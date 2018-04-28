@@ -48,8 +48,8 @@ public abstract class AbstractLuceneIndices implements LuceneIndices {
     protected LuceneIndex prepareIndex(String name, Supplier<Directory> directorySupplier) {
         LuceneIndex index = new LuceneIndex(name, directorySupplier, indexWriterConfigSupplier);
         index.setAnalyzer(analyzer);
-        index.setAutoCommit(false);
-        index.setAutoFlush(false);
+        index.setAutoCommit(autoCommit);
+        index.setAutoFlush(autoFlush);
         index.setOpenMode(openMode);
         return index;
     }
